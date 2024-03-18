@@ -1,15 +1,15 @@
-import { Stack, App, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
+import { Stack, App, StackProps } from "aws-cdk-lib";
 import { Function, Runtime, Code } from "aws-cdk-lib/aws-lambda";
 import { HttpApi, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
-import * as apiGw from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { Table } from "aws-cdk-lib/aws-dynamodb";
-
 import {
 	UserPool,
 	VerificationEmailStyle,
 	AccountRecovery,
 } from "aws-cdk-lib/aws-cognito";
+import { PREFIX, SECONDARY_INDEX } from "./constants";
 
 interface ApplicationStackProps extends StackProps {
 	table: Table;
@@ -19,16 +19,14 @@ export class ApplicationStack extends Stack {
 	constructor(scope: Construct, id: string, props: ApplicationStackProps) {
 		super(scope, id, props);
 
-		const prefix = "abcJewellers";
-
 		// Lambda function
-		const lambdaFunction = new Function(this, `${prefix}Function`, {
+		const lambdaFunction = new Function(this, `${PREFIX}-function`, {
 			runtime: Runtime.NODEJS_16_X,
 			code: Code.fromAsset("lambda"),
 			handler: "index.handler",
 			environment: {
 				TABLE_NAME: props.table.tableName,
-				SECONDARY_INDEX: "categoryIndex",
+				SECONDARY_INDEX,
 			},
 		});
 
@@ -36,12 +34,12 @@ export class ApplicationStack extends Stack {
 		props.table.grantReadWriteData(lambdaFunction);
 
 		// API Gateway
-		const api = new HttpApi(this, `${prefix}Api`);
+		const api = new HttpApi(this, `${PREFIX}-api`);
 		api.addRoutes({
 			path: "/items",
 			methods: [HttpMethod.GET, HttpMethod.POST],
-			integration: new apiGw.HttpLambdaIntegration(
-				`${prefix}/items`,
+			integration: new HttpLambdaIntegration(
+				`${PREFIX}/items`,
 				lambdaFunction
 			),
 		});
@@ -50,14 +48,14 @@ export class ApplicationStack extends Stack {
 		api.addRoutes({
 			path: "/items/{id}",
 			methods: [HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE],
-			integration: new apiGw.HttpLambdaIntegration(
-				`${prefix}/items/id`,
+			integration: new HttpLambdaIntegration(
+				`${PREFIX}/items/id`,
 				lambdaFunction
 			),
 		});
 
 		// Cognito User Pool
-		const userPool = new UserPool(this, `${prefix}UserPool`, {
+		const userPool = new UserPool(this, `${PREFIX}-userpool`, {
 			selfSignUpEnabled: true,
 			accountRecovery: AccountRecovery.EMAIL_ONLY,
 			userVerification: {

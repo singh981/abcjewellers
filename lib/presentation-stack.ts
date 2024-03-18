@@ -1,5 +1,5 @@
-import { Stack, RemovalPolicy } from "aws-cdk-lib";
 import { Construct } from "constructs";
+import { Stack, RemovalPolicy } from "aws-cdk-lib";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import {
 	CloudFrontWebDistribution,
@@ -13,16 +13,18 @@ import {
 	PublicHostedZone,
 } from "aws-cdk-lib/aws-route53";
 import { CloudFrontTarget } from "aws-cdk-lib/aws-route53-targets";
-import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import {
+	Certificate,
+	CertificateValidation,
+} from "aws-cdk-lib/aws-certificatemanager";
+import { PREFIX, DOMAIN_NAME } from "./constants";
 
 export class PresentationStack extends Stack {
 	constructor(scope: Construct, id: string) {
 		super(scope, id);
-		const prefix = "abcJewellers";
-		const domainName = "https://www.abcjewellers.com";
 
 		// S3 bucket for static content
-		const bucket = new Bucket(this, `${prefix}Bucket`, {
+		const bucket = new Bucket(this, `${PREFIX}`, {
 			websiteIndexDocument: "index.html",
 			websiteErrorDocument: "error.html",
 			removalPolicy: RemovalPolicy.DESTROY,
@@ -31,7 +33,7 @@ export class PresentationStack extends Stack {
 		});
 
 		// S3 bucket for logs
-		const logsBucket = new Bucket(this, `${prefix}LogBucket`, {
+		const logsBucket = new Bucket(this, `${PREFIX}-logs`, {
 			publicReadAccess: false,
 			removalPolicy: RemovalPolicy.DESTROY,
 		});
@@ -43,15 +45,15 @@ export class PresentationStack extends Stack {
 		bucket.grantRead(originAccessIdentity);
 
 		// Domain certificate
-		new acm.Certificate(this, `${prefix}Certificate`, {
-			domainName: domainName,
-			validation: acm.CertificateValidation.fromDns(),
+		new Certificate(this, `${PREFIX}-certificate`, {
+			domainName: DOMAIN_NAME,
+			validation: CertificateValidation.fromDns(),
 		});
 
 		// CloudFront distribution for the S3 bucket
 		const distribution = new CloudFrontWebDistribution(
 			this,
-			`${prefix}Distribution`,
+			`${PREFIX}-distribution`,
 			{
 				defaultRootObject: "index.html",
 				originConfigs: [
@@ -68,7 +70,7 @@ export class PresentationStack extends Stack {
 				loggingConfig: {
 					bucket: logsBucket,
 					includeCookies: true,
-					prefix: `${prefix}_cloudfront/`,
+					prefix: `${PREFIX}_cloudfront/`,
 				},
 				errorConfigurations: [
 					{
@@ -82,10 +84,12 @@ export class PresentationStack extends Stack {
 
 		// Route53 record to route traffic
 		const zone = PublicHostedZone.fromLookup(this, "Zone", {
-			domainName: "mydomain.com",
+			domainName: DOMAIN_NAME,
 		});
+
+		// Alias record for the CloudFront distribution
 		new ARecord(this, "SiteAliasRecord", {
-			recordName: domainName,
+			recordName: DOMAIN_NAME,
 			target: RecordTarget.fromAlias(new CloudFrontTarget(distribution)),
 			zone,
 		});
