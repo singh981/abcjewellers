@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
-import { AbcJewellersStack } from "../lib/abcJewellers-stack";
+import { AbcJewellersStack } from "../lib/abc-jewellers-stack";
 
 const app = new cdk.App();
 new AbcJewellersStack(app, "AbcJewellersInfraStack", {

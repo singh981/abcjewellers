@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/abc_jewellers_infra.ts",
+  "app": "npx ts-node --prefer-ts-exts bin/abc-jewellers-infra.ts",
   "watch": {
     "include": [
       "**"
